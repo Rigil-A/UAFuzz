@@ -14,16 +14,58 @@ Overall, UAFuzz has the similar workflow as directed fuzzers with our modificati
 More details in our [paper](./raid20-final286.pdf) at RAID'20 and our [talk](https://www.blackhat.com/us-20/briefings/schedule/#about-directed-fuzzing-and-use-after-free-how-to-find-complex--silent-bugs-20835) at Black Hat USA'20. Thanks also to Sébastien Bardin, Matthieu Lemerre, Prof. Roland Groz and especially Richard Bonichon ([@rbonichon](https://github.com/rbonichon)) for his help on Ocaml.
 
 ## Installation
-- [IDA Pro v6.9 and v7.6](https://www.hex-rays.com/products/ida/) (32-bit) and Python v2.7 (we aim to support more open-source binary disassemblers like Radare in the future).
-- [Graph-Easy v0.7.6](https://metacpan.org/pod/Graph::Easy) for converting IDA's call graph into dot format.
-- The profiling tool [Valgrind](https://valgrind.org/).
-- The binary analysis framework [BINSEC](https://github.com/binsec/binsec).
-- Coverage-guided greybox fuzzer [AFL v2.52b](https://lcamtuf.coredump.cx/afl/) in QEMU mode.
 
-Our tested environment is Ubuntu 16.04 64-bit.
+### Quick Start (Automated)
+
+For Ubuntu 16.04, use our automated setup script:
+
+```bash
+git clone https://github.com/strongcourage/uafuzz.git
+cd uafuzz
+bash setup.sh
+```
+
+Then configure IDA Pro (see below) and run:
+```bash
+source uafuzz.env
+bash run_uafuzz_example.sh
+```
+
+### Manual Installation
+
+See [INSTALLATION.md](INSTALLATION.md) for detailed step-by-step instructions.
+
+### Requirements
+
+- **OS**: Ubuntu 16.04 64-bit (tested environment)
+- **IDA Pro**: v6.6 Windows version (run via Wine)
+- **Graph-Easy**: v0.7.6+ for call graph conversion
+- **Valgrind**: For profiling
+- **BINSEC**: Binary analysis framework
+- **AFL**: v2.52b with QEMU mode
+
+### IDA Pro Setup with Wine
+
+This repository supports running IDA Pro 6.6 Windows version via Wine in headless mode:
+
+1. Install IDA Pro 6.6 Windows at: `/home/$USER/Downloads/IDAPro6.6full/IDAPro6.6/`
+2. The provided `ida_wrapper.sh` will run IDA headless (no GUI)
+3. Configure path in `uafuzz.env` if needed
+
+**Note**: Original installation instructions for native Linux IDA are preserved below for reference.
+
+---
+
+### Original Installation (for reference)
+
+- [IDA Pro v6.9 and v7.6](https://www.hex-rays.com/products/ida/) (32-bit) and Python v2.7
+- [Graph-Easy v0.7.6](https://metacpan.org/pod/Graph::Easy) for converting IDA's call graph
+- The profiling tool [Valgrind](https://valgrind.org/)
+- The binary analysis framework [BINSEC](https://github.com/binsec/binsec)
+- Coverage-guided greybox fuzzer [AFL v2.52b](https://lcamtuf.coredump.cx/afl/) in QEMU mode
+
 ~~~bash
-# Install Ocaml and prerequisite packages for BINSEC via OPAM
-sudo apt update
+# Install OCaml and prerequisite packages for BINSEC via OPAM
 sudo apt update
 sudo apt install ocaml ocaml-native-compilers camlp4-extra opam emacs llvm-6.0-dev pkg-config protobuf-compiler libgmp-dev libzmq3-dev cmake valgrind
 opam init
@@ -43,11 +85,8 @@ cd Graph-Easy-0.76
 perl Makefile.PL; make test; sudo make install
 export GRAPH_EASY_PATH=/usr/local/bin/graph-easy
 
-# Checkout source code
-git clone https://github.com/strongcourage/uafuzz.git
-
 # Environment variables
-export IDA_PATH = /path/to/ida-6.9/idaq
+export IDA_PATH=/path/to/ida-6.9/idaq
 export GRAPH_EASY_PATH=/path/to/graph-easy
 cd uafuzz; export UAFUZZ_PATH=`pwd`
 
