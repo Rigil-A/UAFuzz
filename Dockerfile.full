@@ -1,0 +1,109 @@
+# UAFuzz Dockerfile - Ubuntu 16.04, đầy đủ các phụ thuộc
+FROM ubuntu:16.04
+
+LABEL maintainer="UAFuzz-Repro"
+
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    build-essential \
+    curl \
+    wget \
+    git \
+    sudo \
+    python2.7 \
+    python2.7-dev \
+    python-pip \
+    perl \
+    cpanminus \
+    libgraphviz-perl \
+    libexpat1-dev \
+    libssl-dev \
+    libelf-dev \
+    gcc-multilib g++-multilib \
+    zlib1g-dev \
+    libglib2.0-dev \
+    libpixman-1-dev \
+    libtool \
+    automake \
+    autoconf \
+    pkg-config \
+    valgrind \
+    graphviz \
+    cmake \
+    unzip \
+    libgmp-dev \
+    libtool \
+    m4 \
+    opam \
+    libfindlib-ocaml-dev \
+    ca-certificates \
+    menhir \
+    libzmq3-dev \
+    llvm-dev \
+    protobuf-compiler \
+    xz-utils \
+    libtool-bin \
+    bison \
+    qemu-system \
+    qemu-user \
+    qemu-user-static \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install piqi and piqic-ocaml binaries
+COPY piqi-binary/Linux-x86_64/piqi /usr/local/bin/piqi
+COPY piqi-binary/Linux-x86_64/piqic-ocaml /usr/local/bin/piqic-ocaml
+RUN chmod +x /usr/local/bin/piqi /usr/local/bin/piqic-ocaml
+
+# Install Graph-Easy
+RUN cpanm Graph::Easy
+
+# Install OPAM
+RUN wget https://github.com/ocaml/opam/releases/download/2.0.9/opam-2.0.9-x86_64-linux \
+    -O /usr/local/bin/opam && \
+    chmod +x /usr/local/bin/opam
+
+# Init opam
+RUN opam init --disable-sandboxing -y && bash -c "source ~/.profile"
+
+# Install OCaml 4.05.0 and dependencies
+RUN opam switch create 4.01.0 ocaml-base-compiler.4.01.0 --yes
+RUN bash -c "source ~/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true"
+RUN opam install -y ocamlfind ocamlgraph zarith piqilib.0.6.12 zmq.4.0-8 dune
+ENV OPAMSWITCH=4.01.0
+ENV CAML_LD_LIBRARY_PATH=/root/.opam/4.01.0/lib/stublibs
+ENV PATH="/root/.opam/4.01.0/bin:${PATH}"
+
+# Download and extract binsec prebuilt binary
+RUN mkdir -p /opt/binsec && \
+    wget https://github.com/binsec/binsec/releases/download/0.10.1/binsec-0.10.1.tbz -O /opt/binsec/binsec-0.10.1.tbz && \
+    tar -xvjf /opt/binsec/binsec-0.10.1.tbz -C /opt/binsec && \
+    rm /opt/binsec/binsec-0.10.1.tbz
+ENV BINSEC_PATH=/opt/binsec
+
+# Build AFL 2.52b QEMU mode
+RUN wget https://github.com/google/AFL/archive/v2.57b.tar.gz -O /tmp/afl-2.57b.tar.gz && \
+    tar -xzf /tmp/afl-2.57b.tar.gz -C /opt && \
+    mv /opt/AFL-2.57b /opt/afl && \
+    rm /tmp/afl-2.57b.tar.gz && \
+    cd /opt/afl && make && make install && \
+    sed -i 's|2.10.0|2.12.0|g;s|http://download.qemu-project.org/qemu-2.10.0.tar.xz|https://archive.org/download/qemu-2.12.0.tar.xz/qemu-2.12.0.tar.xz|g;s|http://download.qemu.org/qemu-2.12.0.tar.xz|https://archive.org/download/qemu-2.12.0.tar.xz/qemu-2.12.0.tar.xz|g' /opt/afl/qemu_mode/build_qemu_support.sh
+RUN wget https://ftp2.osuosl.org/pub/blfs/conglomeration/qemu/qemu-2.12.0.tar.bz2 -O /opt/afl/qemu_mode/qemu-2.12.0.tar.bz2
+RUN cd /opt/afl/qemu_mode && bunzip2 qemu-2.12.0.tar.bz2 && xz qemu-2.12.0.tar
+RUN sed -i '1i if [ -f "/opt/afl/qemu_mode/qemu-2.12.0.tar.xz" ]; then echo "QEMU tarball already present, skipping download."; exit 0; fi' /opt/afl/qemu_mode/build_qemu_support.sh
+RUN sed -i 's|http://download.qemu-project.org/qemu-2.10.0.tar.xz|/opt/afl/qemu_mode/qemu-2.12.0.tar.xz|g;s|http://download.qemu.org/qemu-2.12.0.tar.xz|/opt/afl/qemu_mode/qemu-2.12.0.tar.xz|g' /opt/afl/qemu_mode/build_qemu_support.sh
+RUN cd /opt/afl/qemu_mode && ./build_qemu_support.sh
+ENV AFL_PATH=/opt/afl
+
+# Install QEMU for instrumentation
+RUN apt-get update && apt-get install -y qemu-system qemu-user qemu-user-static
+
+# Clone UAFuzz
+RUN git clone https://github.com/strongcourage/uafuzz.git /opt/uafuzz
+ENV IDA_PATH=/ida
+ENV PATH="/opt/uafuzz:${PATH}"
+ENV UAFUZZ_HOME=/opt/uafuzz
+WORKDIR /opt/uafuzz
+RUN chmod +x install.sh || true
+
+# Default command
+CMD ["/bin/bash"]
