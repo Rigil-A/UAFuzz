@@ -56,7 +56,7 @@ PIQI2CAML ?=piqic-ocaml
 PIQI2CAML_FLAGS ?= --multi-format -C $(PIQI_DIR) 
 
 DESTDIR         ?=
-prefix          ?=/usr/local
+prefix          ?=$(HOME)/.local
 exec_prefix     ?=${prefix}
 datarootdir     ?=${prefix}/share
 datadir         ?=${datarootdir}
