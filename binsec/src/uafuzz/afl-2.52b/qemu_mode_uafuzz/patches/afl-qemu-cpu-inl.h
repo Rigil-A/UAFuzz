@@ -168,10 +168,18 @@ static void afl_forkserver(CPUState *cpu) {
 
   if (!afl_area_ptr) return;
 
+  /* Debug: entering forkserver */
+  fprintf(stderr, "[afl_qemu] forkserver start pid=%d\n", getpid());
+
   /* Tell the parent that we're alive. If the parent doesn't want
      to talk, assume that we're not running in forkserver mode. */
 
-  if (write(FORKSRV_FD + 1, tmp, 4) != 4) return;
+  if (write(FORKSRV_FD + 1, tmp, 4) != 4) {
+    perror("[afl_qemu] forkserver hello write");
+    return;
+  }
+
+  fprintf(stderr, "[afl_qemu] forkserver hello sent\n");
 
   afl_forksrv_pid = getpid();
 
@@ -184,7 +192,12 @@ static void afl_forkserver(CPUState *cpu) {
 
     /* Whoops, parent dead? */
 
-    if (read(FORKSRV_FD, tmp, 4) != 4) exit(2);
+    if (read(FORKSRV_FD, tmp, 4) != 4) {
+      perror("[afl_qemu] forkserver read ctl");
+      exit(2);
+    }
+
+    fprintf(stderr, "[afl_qemu] forkserver got command\n");
 
     /* Establish a channel with child to grab translation commands. We'll
        read from t_fd[0], child will write to TSL_FD. */
@@ -211,7 +224,10 @@ static void afl_forkserver(CPUState *cpu) {
 
     close(TSL_FD);
 
-    if (write(FORKSRV_FD + 1, &child_pid, 4) != 4) exit(5);
+    if (write(FORKSRV_FD + 1, &child_pid, 4) != 4) {
+      perror("[afl_qemu] forkserver write child pid");
+      exit(5);
+    }
 
     /* Collect translation requests until child dies and closes the pipe. */
 
@@ -220,7 +236,12 @@ static void afl_forkserver(CPUState *cpu) {
     /* Get and relay exit status to parent. */
 
     if (waitpid(child_pid, &status, 0) < 0) exit(6);
-    if (write(FORKSRV_FD + 1, &status, 4) != 4) exit(7);
+    if (write(FORKSRV_FD + 1, &status, 4) != 4) {
+      perror("[afl_qemu] forkserver write status");
+      exit(7);
+    }
+
+    fprintf(stderr, "[afl_qemu] forkserver child exit=%d\n", status);
 
   }
 

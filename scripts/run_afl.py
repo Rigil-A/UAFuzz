@@ -8,14 +8,49 @@ import shutil
 from shutil import copyfile
 import glob
 
-afl_path = os.environ['AFL']
-afl_fuzz = afl_path + "/afl-fuzz"
+def _which(cmd):
+    # Simple which for Python 2 compatibility
+    path = os.environ.get('PATH', '')
+    for directory in path.split(os.pathsep):
+        candidate = os.path.join(directory, cmd)
+        if os.path.exists(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+def resolve_afl_fuzz():
+    # Try AFL env, then AFL_PATH, then system PATH
+    afl_env = os.environ.get('AFL', '')
+    afl_path_env = os.environ.get('AFL_PATH', '')
+    candidates = []
+    if afl_env:
+        candidates.append(os.path.join(afl_env, 'afl-fuzz'))
+    if afl_path_env and afl_path_env != afl_env:
+        candidates.append(os.path.join(afl_path_env, 'afl-fuzz'))
+    # Fallback to PATH lookup
+    afl_on_path = _which('afl-fuzz')
+    if afl_on_path:
+        candidates.append(afl_on_path)
+
+    for c in candidates:
+        if c and os.path.exists(c) and os.access(c, os.X_OK):
+            # Export AFL_PATH for AFL scripts compatibility
+            dirpath = os.path.dirname(c)
+            os.environ['AFL_PATH'] = dirpath
+            return c
+
+    raise SystemExit("afl-fuzz not found. Set $AFL or $AFL_PATH to a directory containing afl-fuzz, or install afl-fuzz in PATH.")
+
+afl_fuzz = resolve_afl_fuzz()
 default_in_dir = "in"
 seed_input = "./in/in"
 log_mode = "result" # debug
 
 
 def main(bin_file, in_dir, out, qemu, cmd, timeout):
+    # Discover afl-fuzz; allow caller to override AFL_PATH for qemu binaries
+    afl_fuzz = resolve_afl_fuzz()
+    afl_path = os.environ.get('AFL_PATH', os.path.dirname(afl_fuzz))
+
     bin_name = os.path.basename(bin_file)
     suffix = "_aflqemu_" if qemu else "_afl_"
     out_dir = os.path.join(bin_file + suffix + timeout, out)

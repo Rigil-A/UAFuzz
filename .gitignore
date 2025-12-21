@@ -1,0 +1,58 @@
+# Build outputs
+obj-*/
+third_party/
+*.o
+*.so
+*.a
+
+# Fuzzing outputs
+*_afl*/
+*_aflqemu*/
+*_uafuzz*/
+*_aflgo*/
+
+# Test artifacts
+tests/example/example_asan
+tests/example/example_native_test/
+tests/example/test_uaf.txt
+
+# QEMU builds
+binsec/src/uafuzz/afl-2.52b/afl-qemu-trace-uafuzz
+binsec/src/uafuzz/afl-2.52b/qemu_mode_uafuzz/qemu-2.10.0/i386-linux-user/
+binsec/src/uafuzz/afl-2.52b/qemu_mode_uafuzz/qemu-2.10.0/*.log
+binsec/src/uafuzz/afl-2.52b/qemu_mode_uafuzz/patches/*.h
+binsec/src/uafuzz/afl-2.52b/qemu_mode_uafuzz/qemu-2.10.0/dtc/version_gen.h
+
+# Temporary files
+*.tmp
+*.swp
+*~
+# Build outputs
+obj-*/
+third_party/
+*.o
+*.so
+*.a
+
+# Fuzzing outputs
+*_afl*/
+*_aflqemu*/
+*_uafuzz*/
+*_aflgo*/
+
+# Test artifacts
+tests/example/example_asan
+tests/example/example_native_test/
+tests/example/test_uaf.txt
+
+# QEMU builds
+binsec/src/uafuzz/afl-2.52b/afl-qemu-trace-uafuzz
+binsec/src/uafuzz/afl-2.52b/qemu_mode_uafuzz/qemu-2.10.0/i386-linux-user/
+binsec/src/uafuzz/afl-2.52b/qemu_mode_uafuzz/qemu-2.10.0/*.log
+binsec/src/uafuzz/afl-2.52b/qemu_mode_uafuzz/patches/*.h
+binsec/src/uafuzz/afl-2.52b/qemu_mode_uafuzz/qemu-2.10.0/dtc/version_gen.h
+
+# Temporary files
+*.tmp
+*.swp
+*~

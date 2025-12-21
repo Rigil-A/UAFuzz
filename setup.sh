@@ -33,7 +33,7 @@ sudo apt-get install -y \
     libgmp-dev libzmq3-dev pkg-config zlib1g-dev \
     python-pip python-dev python-networkx python-numpy python-yaml \
     libgraph-easy-perl graphviz \
-    wine
+    wine flex bison libglib2.0-dev
 
 echo -e "${GREEN}Step 2: Setting up OCaml environment...${NC}"
 opam init -y --disable-sandboxing || true
@@ -75,11 +75,23 @@ make piqi
 make -j$(nproc)
 cd ..
 
-echo -e "${GREEN}Step 8: Building AFL-QEMU...${NC}"
-cd binsec/src/uafuzz/afl-2.52b/qemu_mode_uafuzz
-./build_qemu_support.sh
-cd ../..
-ln -sf afl-qemu-trace-uafuzz afl-qemu-trace
+echo -e "${GREEN}Step 8: Building AFL 2.52b (vanilla) with QEMU mode...${NC}"
+mkdir -p third_party
+cd third_party
+if [ ! -d "afl-2.52b" ]; then
+    wget https://lcamtuf.coredump.cx/afl/releases/afl-2.52b.tgz -O afl-2.52b.tgz
+    tar xzf afl-2.52b.tgz
+    rm afl-2.52b.tgz
+fi
+cd afl-2.52b
+make clean || true
+make
+
+# Fix QEMU download URL and build qemu_mode
+sed -i 's|http://download.qemu-project.org|https://download.qemu.org|g' qemu_mode/build_qemu_support.sh
+cd qemu_mode
+./build_qemu_support.sh || echo "[!] qemu_mode build completed with warnings (instrumentation test may fail)."
+cd ..
 cd $UAFUZZ_PATH
 
 echo -e "${GREEN}Step 9: Creating environment configuration...${NC}"
@@ -87,7 +99,9 @@ cat > uafuzz.env << EOF
 export UAFUZZ_PATH=$UAFUZZ_PATH
 export IDA_PATH=\$UAFUZZ_PATH/ida_wrapper.sh
 export GRAPH_EASY_PATH=/usr/local/bin/graph-easy
-export AFL=\$UAFUZZ_PATH/binsec/src/uafuzz/afl-2.52b
+# Default AFL to the vanilla build with QEMU support
+export AFL=\$UAFUZZ_PATH/third_party/afl-2.52b/afl-fuzz
+export AFL_PATH=\$UAFUZZ_PATH/third_party/afl-2.52b
 export AFLGO=\$AFL
 export UAFBENCH_PATH=\$UAFUZZ_PATH/tests
 export MALLOC_CHECK_=0

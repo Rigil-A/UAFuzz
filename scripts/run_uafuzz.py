@@ -9,9 +9,10 @@ from shutil import copyfile
 import glob
 import time
 
-ida_path = os.environ['IDA_PATH']
+# Read optional paths safely; allow --no_ida mode without IDA/GraphEasy
+ida_path = os.environ.get('IDA_PATH', '')
 uafuzz_path = os.environ['UAFUZZ_PATH']
-graph_easy_path = os.environ['GRAPH_EASY_PATH']
+graph_easy_path = os.environ.get('GRAPH_EASY_PATH', '')
 uafbench_path = os.environ['UAFBENCH_PATH']
 ida_script_path = uafuzz_path + "/binsec/src/ida/ida.py"
 binsec_bin_path = uafuzz_path + "/binsec/src/binsec"

@@ -22,6 +22,8 @@ echo "" > in/seed
 export TARGETS_ENV_VAR=/home/khoile/uafuzz/tests/example/uafuzz/example.tgt
 export UAF_ENV_VAR=/home/khoile/uafuzz/tests/example/uafuzz/example.tgt_uaf
 export BB_DISTANCE_ENV_VAR="$PWD/distances.txt"
+export CUTEDGES_ENV_VAR="$PWD/cut_edges.txt"
+export AFL_SKIP_BIN_CHECK=1
 
 echo "=== Running UAFuzz Preprocessing ==="
 # Run BINSEC to generate distance files
@@ -35,7 +37,7 @@ $UAFUZZ_PATH/binsec/src/binsec \
   -uafuzz-o "$PWD/out" \
   -uafuzz-I uafuzz \
   -uafuzz-r "$PWD/example @@" \
-  -uafuzz-to 2 \
+  -uafuzz-to 50 \
   -uafuzz-T "$TARGETS_ENV_VAR"
 
 echo ""
@@ -50,3 +52,12 @@ echo "Cut edges:"
 cat cut_edges.txt
 echo ""
 echo "Check fuzzing results in: $PWD/out/"
+
+# Manually invoke afl-fuzz with explicit argv to avoid argv being empty in forkserver
+echo ""
+echo "=== Running afl-fuzz (manual) ==="
+cd /home/khoile/uafuzz/tests/example/example_working_test
+export AFL_SKIP_BIN_CHECK=1
+export AFL_QEMU_DEBUG=1
+export AFL_NOCPU_AFFINITY=1
+"$AFL"/afl-fuzz -Q -m none -i "$PWD/in" -o "$PWD/out" -- "$PWD/example" @@

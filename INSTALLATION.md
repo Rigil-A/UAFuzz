@@ -121,7 +121,41 @@ ls -lh src/binsec  # Should be ~12-13 MB
 cd ..
 ```
 
-## 7. Build AFL-QEMU for UAFuzz
+## 7. Build AFL and AFL-QEMU
+
+### 7.1 Download and Build Standard AFL 2.52b
+
+```bash
+# Download AFL 2.52b
+cd $UAFUZZ_PATH/third_party
+wget https://download.qemu.org/qemu-2.10.0.tar.xz -O qemu-2.10.0.tar.xz 2>/dev/null || true
+cd afl-2.52b
+
+# Build AFL core
+make clean
+make
+
+# Verify afl-fuzz built
+ls -lh afl-fuzz  # Should be executable
+```
+
+### 7.2 Build AFL-QEMU Support
+
+```bash
+# Fix download URL in build script
+sed -i 's|http://download.qemu-project.org|https://download.qemu.org|g' qemu_mode/build_qemu_support.sh
+
+# Build QEMU mode (this takes 5-10 minutes)
+cd qemu_mode
+./build_qemu_support.sh
+
+# Verify afl-qemu-trace built
+ls -lh ../afl-qemu-trace  # Should be ~10 MB
+
+cd $UAFUZZ_PATH
+```
+
+### 7.3 Build AFL-QEMU for UAFuzz (Optional - for UAF-specific instrumentation)
 
 ```bash
 cd binsec/src/uafuzz/afl-2.52b/qemu_mode_uafuzz
@@ -179,7 +213,56 @@ chmod +x ida_wrapper.sh
 timeout 5 ./ida_wrapper.sh -v 2>&1 | head -5
 ```
 
-## 9. Configure Environment
+## 9. Run AFL Tests
+
+### 9.1 Setup AFL Environment
+
+```bash
+# Set AFL path to the build location
+export AFL=$UAFUZZ_PATH/third_party/afl-2.52b/afl-fuzz
+export AFL_PATH=$UAFUZZ_PATH/third_party/afl-2.52b
+```
+
+### 9.2 Run AFL-QEMU Test (Optional - Known Handshake Issue)
+
+```bash
+source $UAFUZZ_PATH/uafuzz.env
+export AFL=$UAFUZZ_PATH/third_party/afl-2.52b/afl-fuzz
+export AFL_PATH=$UAFUZZ_PATH/third_party/afl-2.52b
+
+$UAFUZZ_PATH/tests/example.sh aflqemu 1
+```
+
+**Note**: AFL-QEMU mode may experience "Fork server handshake failed" error. This is a known integration issue. For reliable fuzzing, use native AFL with instrumentation or the native ASAN pipeline (see section 9.4).
+
+### 9.3 Run Native ASAN Validation (Recommended)
+
+```bash
+bash $UAFUZZ_PATH/run_native_afl_example.sh
+```
+
+This runs the example through preprocessing + ASAN, successfully detecting the UAF vulnerability.
+
+### 9.4 Configure AFL for AFL Tests
+
+If you want to use standard AFL-GCC instrumentation (avoiding QEMU):
+
+```bash
+# Setup AFL environment
+export AFL_PATH=$UAFUZZ_PATH/third_party/afl-2.52b
+export AFL=$AFL_PATH/afl-fuzz
+export PATH=$AFL_PATH:$PATH
+
+# Compile test with AFL instrumentation
+$AFL_PATH/afl-gcc tests/example/example.c -o tests/example/example-afl
+
+# Run AFL
+mkdir -p /tmp/afl-in /tmp/afl-out
+echo "" > /tmp/afl-in/seed
+$AFL_PATH/afl-fuzz -i /tmp/afl-in -o /tmp/afl-out -- /path/to/example-afl @@
+```
+
+## 10. Configure Environment
 
 Create environment configuration file:
 
@@ -201,7 +284,7 @@ sed -i "s|\$USER|$USER|g" uafuzz.env
 source uafuzz.env
 ```
 
-## 10. System Configuration
+## 11. System Configuration
 
 ```bash
 # Configure core pattern for AFL fuzzing
@@ -211,7 +294,7 @@ sudo bash -c 'echo core >/proc/sys/kernel/core_pattern'
 cat /proc/sys/kernel/core_pattern  # Should output: core
 ```
 
-## 11. Setup Test Files
+## 12. Setup Test Files
 
 ### 11.1 Create IDA Artifact Directory
 
@@ -229,7 +312,7 @@ cp tests/example/uafuzz/example.ida_orig tests/ida/example/
 cp tests/example/uafuzz/callgraph.dot tests/ida/example/
 ```
 
-## 12. Verification
+## 13. Verification
 
 ### 12.1 Test BINSEC
 
@@ -271,7 +354,7 @@ Expected output:
 [uafuzz:result] BB-level distance file: .../distances.txt
 ```
 
-## 13. Quick Start Script
+## 14. Quick Start Script
 
 Use the provided example runner:
 
@@ -316,6 +399,12 @@ sudo apt-get install -y gcc-multilib g++-multilib
 ```bash
 $AFL/afl-gcc example.c -o example
 # Then run without -Q flag
+$AFL_PATH/afl-fuzz -i in -o out -- ./example @@
+```
+
+**Workaround**: Use the native ASAN pipeline for validation:
+```bash
+bash run_native_afl_example.sh
 ```
 
 ## Version Information
@@ -336,6 +425,10 @@ $AFL/afl-gcc example.c -o example
 ✅ Distance file generation  
 ✅ Cut edge detection  
 ✅ UAF target identification  
+✅ Native AFL with instrumentation (afl-gcc)  
+✅ ASAN-based UAF detection  
+✅ Python 2 compatibility for run_afl.py  
+✅ AFL 2.52b builds and QEMU binary creation  
 
 ## Support
 
